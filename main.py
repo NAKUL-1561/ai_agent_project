@@ -2,7 +2,7 @@ import argparse
 import os
 from google import genai
 from prompt import system_prompt
-from call_function import available_functions
+from call_function import available_functions, call_function
 from google.genai import types
 from dotenv import load_dotenv
 
@@ -41,7 +41,26 @@ if args.verbose:
     print(f"Response tokens: {response_tokens}")
 
 if response.function_calls:
+    function_results = []
     for function_call in response.function_calls:
-        print(f"Calling function: {function_call.name}({function_call.args})")
+        function_call_result = call_function(function_call, verbose=args.verbose)
+        
+        # Validate the response structure
+        if not function_call_result.parts:
+            raise Exception("Function call result has no parts")
+        
+        function_response = function_call_result.parts[0].function_response
+        if function_response is None:
+            raise Exception("Function response is None")
+        
+        if function_response.response is None:
+            raise Exception("Function response.response is None")
+        
+        # Add the part to function results
+        function_results.append(function_call_result.parts[0])
+        
+        # Print the result if verbose mode is enabled
+        if args.verbose:
+            print(f"-> {function_response.response}")
 else:
     print(response.text)
